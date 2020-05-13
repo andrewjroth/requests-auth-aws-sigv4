@@ -1,10 +1,11 @@
-﻿#!/bin/env python3
+#!/bin/env python3
 from __future__ import print_function
 import logging
 import sys
 import os.path
 import argparse
 import re
+from collections import OrderedDict
 import requests
 from requests.compat import urlparse
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
         choices=["DELETE", "GET", "HEAD",  "OPTIONS", "PATCH", "POST", "PUT"],
         help="Specify request command to use")
     cli.add_argument('-d', '--data', action='append',
-        help="HTTP POST data")
+        help="HTTP POST data; changes request command to 'POST'")
     
     # Additional, non-cURL options
     cli.add_argument('--debug', action='store_true', help="Enable debug output")
@@ -53,13 +54,17 @@ if __name__ == '__main__':
     args = cli.parse_args()
     if args.debug:
         log.setLevel(logging.DEBUG)
+    m = re.search('([a-z0-9-]+)\.([a-z]{2}-[a-z]+-\d{1})\.', args.url)
     if args.service is None:
-        m = re.search('([a-z0-9-]+)\.[a-z]{2}-[a-z]+-\d{1}', args.url)
         if m:
+            log.debug("Guessing service from url: %s", m.group(1))
             args.service = m.group(1)
         else:
             print("Couldn't determine service, option --service is needed")
             sys.exit(2)
+    if args.region is None and m is not None:
+        log.debug("Guessing region from url: %s", m.group(2))
+        args.region = m.group(2)
     if args.data:
         args.request = 'POST'
         post_data = dict(map(lambda d: d.split('='), args.data))
