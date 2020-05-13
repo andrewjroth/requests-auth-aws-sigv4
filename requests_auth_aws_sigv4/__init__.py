@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import logging
 from collections import OrderedDict
+from requests import __version__ as requests_version
 from requests.auth import AuthBase
 from requests.compat import urlencode, quote, urlparse
 
@@ -17,8 +18,10 @@ try:
 except ImportError:
     pass
 
+__version__ = '0.2'
 
-log = logging.getLogger('aws-sigv4')
+
+log = logging.getLogger(__name__)
 
 
 def sign_msg(key, msg):
@@ -158,6 +161,8 @@ class AWSSigV4(AuthBase):
             'Host': host, 
             'X-AMZ-Date': self.amzdate,
             'Authorization': authorization_header, 
+            'User-Agent': 'python-requests/{} auth-aws-sigv4/{}'.format(
+                            requests_version, __version__)
         })
         return r
 
