@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-__version__ = '0.3'
+__version__ = '0.5-beta'
 
 
 log = logging.getLogger(__name__)
@@ -115,6 +115,15 @@ class AWSSigV4(AuthBase):
         else:
             qs = dict()
         
+        # Setup Headers
+        r.headers.update({
+            'Host': host, 
+            'X-AMZ-Date': self.amzdate,
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+            'User-Agent': 'python-requests/{} auth-aws-sigv4/{}'.format(
+                            requests_version, __version__)
+        })
+        
         ## Task 1: Create Cononical Request
         ## Ref: http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
         # Query string values must be URL-encoded (space=%20) and be sorted by name.
@@ -123,8 +132,10 @@ class AWSSigV4(AuthBase):
         # Create the canonical headers and signed headers. Header names
         # must be trimmed and lowercase, and sorted in code point order from
         # low to high. Note that there is a trailing \n.
-        headers_to_sign = {'host': host, 'x-amz-date': self.amzdate}
+        headers_to_sign = {'host': host, 'x-amz-date': self.amzdate, 
+            'content-type': "application/x-www-form-urlencoded; charset=utf-8"}
         if self.aws_session_token is not None:
+            r.headers['X-Amz-Security-Token'] = self.aws_session_token
             headers_to_sign['x-amz-security-token'] = self.aws_session_token
         ordered_headers = OrderedDict(sorted(headers_to_sign.items(), key=lambda t: t[0]))
         canonical_headers = ''.join(map(lambda h: ":".join(h) + '\n', ordered_headers.items()))
@@ -134,7 +145,12 @@ class AWSSigV4(AuthBase):
         if r.method == 'GET':
             payload_hash = hashlib.sha256(('').encode('utf-8')).hexdigest()
         else:
-            payload_hash = hashlib.sha256((r.body).encode('utf-8')).hexdigest()
+            if r.body:
+                log.debug("Request Body: %s", r.body)
+                payload_hash = hashlib.sha256((r.body).encode('utf-8')).hexdigest()
+            else:
+                log.debug("Request Body is empty")
+                payload_hash = hashlib.sha256(''.encode('utf-8')).hexdigest()
         
         # Combine elements to create canonical request
         canonical_request = '\n'.join([r.method, uri, canonical_querystring, 
@@ -153,16 +169,12 @@ class AWSSigV4(AuthBase):
         kService = sign_msg(kRegion, self.service)
         kSigning = sign_msg(kService, 'aws4_request')
         signature = hmac.new(kSigning, string_to_sign.encode('utf-8'), hashlib.sha256).hexdigest()
+        log.debug("Signature: %s", signature)
         
         ## Task 4: Add signing information to request
-        authorization_header = "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}".format(
+        r.headers['Authorization'] = "AWS4-HMAC-SHA256 Credential={}/{}, SignedHeaders={}, Signature={}".format(
             self.aws_access_key_id, credential_scope, signed_headers, signature)
-        r.headers.update({
-            'Host': host, 
-            'X-AMZ-Date': self.amzdate,
-            'Authorization': authorization_header, 
-            'User-Agent': 'python-requests/{} auth-aws-sigv4/{}'.format(
-                            requests_version, __version__)
-        })
+        log.debug("Returning Request: <PreparedRequest method=%s, url=%s, headers=%s, SignedHeaders=%s, Signature=%s", 
+            r.method, r.url, r.headers, signed_headers, signature)
         return r
 
