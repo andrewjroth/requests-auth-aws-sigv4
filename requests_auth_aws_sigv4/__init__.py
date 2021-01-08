@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-__version__ = '0.5'
+__version__ = '0.6'
 
 
 log = logging.getLogger(__name__)
@@ -123,6 +123,10 @@ class AWSSigV4(AuthBase):
             'User-Agent': 'python-requests/{} auth-aws-sigv4/{}'.format(
                             requests_version, __version__)
         })
+        if self.aws_session_token is not None:
+            r.headers.update({
+                'x-amz-security-token': self.aws_session_token
+            })
         
         ## Task 1: Create Cononical Request
         ## Ref: http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
@@ -146,11 +150,15 @@ class AWSSigV4(AuthBase):
             payload_hash = hashlib.sha256(('').encode('utf-8')).hexdigest()
         else:
             if r.body:
-                log.debug("Request Body: %s", r.body)
-                payload_hash = hashlib.sha256((r.body).encode('utf-8')).hexdigest()
+                if isinstance(r.body, bytes):
+                    log.debug("Request Body: <bytes> %s", r.body)
+                    payload_hash = hashlib.sha256(r.body).hexdigest()
+                else:
+                    log.debug("Request Body: <str> %s", r.body)
+                    payload_hash = hashlib.sha256(r.body.encode('utf-8')).hexdigest()
             else:
                 log.debug("Request Body is empty")
-                payload_hash = hashlib.sha256(''.encode('utf-8')).hexdigest()
+                payload_hash = hashlib.sha256(b'').hexdigest()
         
         # Combine elements to create canonical request
         canonical_request = '\n'.join([r.method, uri, canonical_querystring, 
