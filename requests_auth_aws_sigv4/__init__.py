@@ -18,7 +18,7 @@ try:
 except ImportError:
     pass
 
-__version__ = '0.6'
+__version__ = '0.7'
 
 
 log = logging.getLogger(__name__)
@@ -116,34 +116,22 @@ class AWSSigV4(AuthBase):
             qs = dict()
         
         # Setup Headers
-        r.headers.update({
-            'Host': host, 
-            'X-AMZ-Date': self.amzdate,
-            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
-            'User-Agent': 'python-requests/{} auth-aws-sigv4/{}'.format(
+        # r.headers is type `requests.structures.CaseInsensitiveDict`
+        if 'Host' not in r.headers:
+            r.headers['Host'] = host
+        if 'Content-Type' not in r.headers:
+            r.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
+        if 'User-Agent' not in r.headers:
+            r.headers['User-Agent'] = 'python-requests/{} auth-aws-sigv4/{}'.format(
                             requests_version, __version__)
-        })
+        r.headers['X-AMZ-Date'] = self.amzdate
         if self.aws_session_token is not None:
-            r.headers.update({
-                'x-amz-security-token': self.aws_session_token
-            })
-        
+            r.headers['x-amz-security-token'] = self.aws_session_token
+
         ## Task 1: Create Cononical Request
         ## Ref: http://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
         # Query string values must be URL-encoded (space=%20) and be sorted by name.
         canonical_querystring = "&".join(map(lambda p: "=".join(p), sorted(qs.items())))
-        
-        # Create the canonical headers and signed headers. Header names
-        # must be trimmed and lowercase, and sorted in code point order from
-        # low to high. Note that there is a trailing \n.
-        headers_to_sign = {'host': host, 'x-amz-date': self.amzdate, 
-            'content-type': "application/x-www-form-urlencoded; charset=utf-8"}
-        if self.aws_session_token is not None:
-            r.headers['X-Amz-Security-Token'] = self.aws_session_token
-            headers_to_sign['x-amz-security-token'] = self.aws_session_token
-        ordered_headers = OrderedDict(sorted(headers_to_sign.items(), key=lambda t: t[0]))
-        canonical_headers = ''.join(map(lambda h: ":".join(h) + '\n', ordered_headers.items()))
-        signed_headers = ';'.join(ordered_headers.keys())
         
         # Create payload hash (hash of the request body content).
         if r.method == 'GET':
@@ -159,6 +147,15 @@ class AWSSigV4(AuthBase):
             else:
                 log.debug("Request Body is empty")
                 payload_hash = hashlib.sha256(b'').hexdigest()
+        r.headers['x-amz-content-sha256'] = payload_hash
+        
+        # Create the canonical headers and signed headers. Header names
+        # must be trimmed and lowercase, and sorted in code point order from
+        # low to high. Note that there is a trailing \n.
+        headers_to_sign = sorted(filter(lambda h: h.startswith('x-amz-') or h == 'host',
+            map(lambda H: H.lower(), r.headers.keys())))
+        canonical_headers = ''.join(map(lambda h: ":".join((h, r.headers[h])) + '\n', headers_to_sign))
+        signed_headers = ';'.join(headers_to_sign)
         
         # Combine elements to create canonical request
         canonical_request = '\n'.join([r.method, uri, canonical_querystring, 
