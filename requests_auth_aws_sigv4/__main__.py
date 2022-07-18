@@ -21,15 +21,16 @@ def parse_response_headers(resp):
         yield "{}: {}".format(n, v)
 
 
-if __name__ == '__main__':
-    if sys.argv[0].endswith('__main__.py'):
-        prog_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
-    else:
-        prog_name = os.path.basename(sys.argv[0])
+if sys.argv[0].endswith('__main__.py'):
+    prog_name = os.path.basename(os.path.dirname(os.path.abspath(__file__)))
+else:
+    prog_name = os.path.basename(sys.argv[0]) or "requests_auth_aws_sigv4"
 
-    logging.basicConfig()
-    log = logging.getLogger(prog_name)
+logging.basicConfig()
+log = logging.getLogger(prog_name)
 
+
+def run(run_args=None):
     cli = argparse.ArgumentParser(prog=prog_name,
                                   description='Send a request with AWS Signature V4 added for authentication')
 
@@ -53,7 +54,7 @@ if __name__ == '__main__':
     cli.add_argument('--region', help="AWS Region Name")
 
     # Parse args and make request
-    args = cli.parse_args()
+    args = cli.parse_args(run_args)
     if args.debug:
         log.setLevel(logging.DEBUG)
     m = re.search(r'([a-z\d-]+)\.([a-z]{2}-[a-z]+-\d)\.', args.url)
@@ -78,8 +79,14 @@ if __name__ == '__main__':
         headers = None
     log.debug("Request: %s %s (service=%s, region=%s)",
               args.request, args.url, args.service, args.region)
-    r = requests.request(args.request, args.url, headers=headers, data=post_data,
-                         auth=AWSSigV4(args.service, region=args.region))
+
+    # Do Request
+    try:
+        r = requests.request(args.request, args.url, headers=headers, data=post_data,
+                             auth=AWSSigV4(args.service, region=args.region))
+    except KeyError as e:
+        print("Error:", ", ".join(e.args))
+        sys.exit(1)
 
     # Output response
     log.debug("Response: %s %s", r.status_code, r.reason)
@@ -107,3 +114,7 @@ if __name__ == '__main__':
             print(json_data)
     except ValueError:
         print(r.text)
+
+
+if __name__ == "__main__":
+    run()

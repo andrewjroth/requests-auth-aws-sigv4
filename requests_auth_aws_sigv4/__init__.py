@@ -80,7 +80,7 @@ class AWSSigV4(AuthBase):
         # Next, try environment variables or use boto3
         if self.region is None:
             log.debug("Checking environment for region")
-            self.region = os.environ.get('AWS_DEFAULT_REGION')
+            self.region = os.environ.get('AWS_DEFAULT_REGION') or os.environ.get('AWS_REGION')
         # Last, fail if not found
         if self.region is None:
             raise KeyError("Region is required")
