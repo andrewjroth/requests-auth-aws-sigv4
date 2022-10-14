@@ -114,7 +114,7 @@ class AWSSigV4(AuthBase):
         if 'Host' not in r.headers:
             r.headers['Host'] = host
         if 'Content-Type' not in r.headers:
-            r.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
+            r.headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8; application/json'
         if 'User-Agent' not in r.headers:
             r.headers['User-Agent'] = 'python-requests/{} auth-aws-sigv4/{}'.format(
                 requests_version, __version__)
