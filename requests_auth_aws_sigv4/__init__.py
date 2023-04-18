@@ -128,7 +128,7 @@ class AWSSigV4(AuthBase):
         canonical_querystring = "&".join(map(lambda p: "=".join(p), sorted(qs.items())))
 
         # Create payload hash (hash of the request body content).
-        if r.method == 'GET':
+        if r.method == 'GET' and not r.body:
             payload_hash = hashlib.sha256(''.encode('utf-8')).hexdigest()
         else:
             if r.body:
