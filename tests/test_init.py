@@ -91,7 +91,7 @@ def test_call_simple(frozentime):
         f"Signature=817adf89563cdf0728f4e684c9ac9ead2cca25c4610e9bb3ddfebe8665ea72f2"
     ])
     assert result.headers['Host'] == "testhost"
-    assert result.headers['Content-Type'] == "application/x-www-form-urlencoded; charset=utf-8"
+    assert result.headers['Content-Type'] == "application/x-www-form-urlencoded; charset=utf-8; application/json"
     assert result.headers['User-Agent'] == 'python-requests/{} auth-aws-sigv4/{}'.format(
         requests_auth_aws_sigv4.requests_version, requests_auth_aws_sigv4.__version__)
     assert result.headers['X-AMZ-Date'] == frozentime.strftime('%Y%m%dT%H%M%SZ')
@@ -114,7 +114,7 @@ def test_uri_double_encoded_segment(frozentime):
         f"Signature=89a91408e96df9231d23bc51aa31916f1f72db68d6e96ba633c6652ba86fe2cd"
     ])
     assert result.headers['Host'] == "testhost"
-    assert result.headers['Content-Type'] == "application/x-www-form-urlencoded; charset=utf-8"
+    assert result.headers['Content-Type'] == "application/x-www-form-urlencoded; charset=utf-8; application/json"
     assert result.headers['User-Agent'] == 'python-requests/{} auth-aws-sigv4/{}'.format(
         requests_auth_aws_sigv4.requests_version, requests_auth_aws_sigv4.__version__)
     assert result.headers['X-AMZ-Date'] == frozentime.strftime('%Y%m%dT%H%M%SZ')
