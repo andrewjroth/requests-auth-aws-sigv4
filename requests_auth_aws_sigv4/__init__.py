@@ -104,10 +104,13 @@ class AWSSigV4(AuthBase):
         url_parts = urlparse(r.url)
         log.debug("Request URL: %s", url_parts)
         host = url_parts.hostname
-        uri_segments = []
-        for segment in url_parts.path.split('/'):
-            uri_segments.append(urllib.parse.quote(segment, safe=''))
-        uri = '/'.join(uri_segments)
+        if self.service == 's3':
+            uri = url_parts.path
+        else:
+            uri_segments = []
+            for segment in url_parts.path.split('/'):
+                uri_segments.append(urllib.parse.quote(segment, safe=''))
+            uri = '/'.join(uri_segments)
         if len(url_parts.query) > 0:
             qs = dict(map(lambda i: i.split('='), url_parts.query.split('&')))
         else:
