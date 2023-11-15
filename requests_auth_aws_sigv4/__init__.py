@@ -96,9 +96,9 @@ class AWSSigV4(AuthBase):
         """
         # Create a date for headers and the credential string
         t = datetime.utcnow()
-        self.amzdate = t.strftime('%Y%m%dT%H%M%SZ')
-        self.datestamp = t.strftime('%Y%m%d')
-        log.debug("Starting authentication with amzdate=%s", self.amzdate)
+        amzdate = t.strftime('%Y%m%dT%H%M%SZ')
+        datestamp = t.strftime('%Y%m%d')
+        log.debug("Starting authentication with amzdate=%s", amzdate)
 
         # Parse request to get URL parts
         url_parts = urlparse(r.url)
@@ -125,7 +125,7 @@ class AWSSigV4(AuthBase):
         if 'User-Agent' not in r.headers:
             r.headers['User-Agent'] = 'python-requests/{} auth-aws-sigv4/{}'.format(
                 requests_version, __version__)
-        r.headers['X-AMZ-Date'] = self.amzdate
+        r.headers['X-AMZ-Date'] = amzdate
         if self.aws_session_token is not None:
             r.headers['x-amz-security-token'] = self.aws_session_token
 
@@ -164,13 +164,13 @@ class AWSSigV4(AuthBase):
         log.debug("Canonical Request: '%s'", canonical_request)
 
         # Task 2: Create string to sign
-        credential_scope = '/'.join([self.datestamp, self.region, self.service, 'aws4_request'])
-        string_to_sign = '\n'.join(['AWS4-HMAC-SHA256', self.amzdate,
+        credential_scope = '/'.join([datestamp, self.region, self.service, 'aws4_request'])
+        string_to_sign = '\n'.join(['AWS4-HMAC-SHA256', amzdate,
                                     credential_scope, hashlib.sha256(canonical_request.encode('utf-8')).hexdigest()])
         log.debug("String-to-Sign: '%s'", string_to_sign)
 
         # Task 3: Calculate Signature
-        k_date = sign_msg(('AWS4' + self.aws_secret_access_key).encode('utf-8'), self.datestamp)
+        k_date = sign_msg(('AWS4' + self.aws_secret_access_key).encode('utf-8'), datestamp)
         k_region = sign_msg(k_date, self.region)
         k_service = sign_msg(k_region, self.service)
         k_signing = sign_msg(k_service, 'aws4_request')
