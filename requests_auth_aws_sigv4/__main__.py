@@ -47,6 +47,8 @@ def run(run_args=None):
                      help="Specify request command to use")
     cli.add_argument('-d', '--data', action='append',
                      help="HTTP POST data; changes request command to 'POST'")
+    cli.add_argument('-u', '--unsigned-payload', action='store_true',
+                    help="Do not sign the payload. Payload is signed by default.")
 
     # Additional, non-cURL options
     cli.add_argument('--debug', action='store_true', help="Enable debug output")
@@ -83,7 +85,8 @@ def run(run_args=None):
     # Do Request
     try:
         r = requests.request(args.request, args.url, headers=headers, data=post_data,
-                             auth=AWSSigV4(args.service, region=args.region))
+                             auth=AWSSigV4(args.service, region=args.region,
+                                           payload_signing_enabled=not args.unsigned_payload))
     except KeyError as e:
         print("Error:", ", ".join(e.args))
         sys.exit(1)

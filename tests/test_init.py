@@ -99,6 +99,24 @@ def test_call_simple(frozentime):
     assert result.headers['x-amz-content-sha256'] == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
+def test_call_no_payload_signing(frozentime):
+    aws_auth = requests_auth_aws_sigv4.AWSSigV4('test', region='test-region-1',
+                                                aws_access_key_id="key_id",
+                                                aws_secret_access_key="secret_key",
+                                                aws_session_token="token",
+                                                payload_signing_enabled=False,
+                                                )
+    req = Request('GET', "https://testhost/action?param=value")
+    result = aws_auth(req.prepare())
+    assert 'Authorization' in result.headers
+    assert result.headers['Authorization'] == ", ".join([
+        f"AWS4-HMAC-SHA256 Credential=key_id/{frozentime:%Y%m%d}/test-region-1/test/aws4_request",
+        f"SignedHeaders=host;x-amz-content-sha256;x-amz-date;x-amz-security-token",
+        f"Signature=a5e20a7d27d57597b3776e04f087343407397fe2418e40cf85ffab051dd2cf1d"
+    ])
+    assert result.headers['x-amz-content-sha256'] == "UNSIGNED-PAYLOAD"
+
+
 def test_uri_double_encoded_segment(frozentime):
     aws_auth = requests_auth_aws_sigv4.AWSSigV4('test', region='test-region-1',
                                                 aws_access_key_id="key_id",
