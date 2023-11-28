@@ -39,6 +39,7 @@ class AWSSigV4(AuthBase):
         :param session: If boto3 is available, will attempt to get credentials using boto3,
             unless passed explicitly.  If using boto3, the provided session will be used or a new
             session will be created.
+        :param bool payload_signing_enabled: Boolean indicating if the payload should be signed or not.
 
         """
         # Set Service
@@ -85,6 +86,9 @@ class AWSSigV4(AuthBase):
         # Last, fail if not found
         if self.region is None:
             raise KeyError("Region is required")
+
+        # Should we sign the payload or not
+        self.payload_signing_enabled = kwargs.get('payload_signing_enabled', True)
 
     def __call__(self, r: PreparedRequest) -> PreparedRequest:
         """ Called to add authentication information to request
@@ -135,7 +139,9 @@ class AWSSigV4(AuthBase):
         canonical_querystring = "&".join(map(lambda p: "=".join(p), sorted(qs.items())))
 
         # Create payload hash (hash of the request body content).
-        if r.method == 'GET' and not r.body:
+        if not self.payload_signing_enabled:
+            payload_hash = 'UNSIGNED-PAYLOAD'
+        elif r.method == 'GET' and not r.body:
             payload_hash = hashlib.sha256(''.encode('utf-8')).hexdigest()
         else:
             if r.body:

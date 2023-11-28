@@ -47,7 +47,7 @@ def mock_auth():
         }, spec=requests.Response)
         mock_AWSSigV4 = mock(main.AWSSigV4)
         when(mock_AWSSigV4).__call__(mock_request).thenReturn(mock_request)
-        when(main).AWSSigV4("service", region="tt-region-1").thenReturn(mock_AWSSigV4)
+        when(main).AWSSigV4("service", region="tt-region-1", payload_signing_enabled=True).thenReturn(mock_AWSSigV4)
         when(requests).request(...).thenReturn(mock_response)
         return mock_response
     yield _make
